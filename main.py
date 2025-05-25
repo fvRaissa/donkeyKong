@@ -14,6 +14,9 @@ fps = 60
 pygame.display.set_caption('Classic Donkey Kong Rebuild')
 #pygame.display.set_icon('imagem') pra colocar o icone
 
+font = pygame.font.Font('freesansbold.ttf' , 50)
+font2 = pygame.font.Font('freesansbold.ttf',30)
+
 
 screen = pygame.display.set_mode([window_width, window_heigth])
 section_width = window_width // 32
@@ -26,6 +29,7 @@ barrel_count = barrel_spawn_time / 2
 barrel_time = 360
 barrel_img = pygame.transform.scale(pygame.image.load('assets/images/barrels/barrel.png'), (section_width * 1.5, section_heigth * 2))
 
+flames_img = pygame.transform.scale(pygame.image.load('assets/images/fire.png'), (section_width * 2, section_heigth))
 
 start_y = window_heigth - 2 * section_heigth
 row2_y = start_y - 4 * section_heigth
@@ -41,6 +45,7 @@ row2_top = row2_y - 8 * slope
 row1_top = start_y - 5 * slope
 fireball_trigger = False
 active_level = 0
+counter = 0
 
 levels = [{'bridges':[(1, start_y, 15), (16, start_y - slope, 3),
                        (19, start_y - 2 * slope, 3), (22, start_y - 3 * slope, 3),
@@ -150,8 +155,6 @@ class Barrel(pygame.sprite.Sprite):
     def draw(self):
         screen.blit(pygame.transform.rotate(barrel_img, 90 * self.pos), self.rect.topleft)
 
-
-
 class Bridge:
     def __init__(self, x_pos, y_pos, length):
         self.x_pos = x_pos * section_width
@@ -225,6 +228,45 @@ def draw_screen():
 
     return platforms, climbers
 
+def draw_extras():
+    oil = draw_oil()
+
+    draw_barrels()
+
+    draw_kong()
+    return oil
+
+def draw_oil():
+    x_coord, y_coord = 4 * section_width, window_heigth - 4.5 * section_heigth
+    oil = pygame.draw.rect(screen, 'blue', [x_coord, y_coord, 2 * section_width, 2.5 * section_heigth])
+    pygame.draw.rect(screen, 'blue', [x_coord - 0.1 * section_width, y_coord, 2.2 * section_width, .2 * section_heigth])
+    pygame.draw.rect(screen, 'blue',
+                     [x_coord - 0.1 * section_width, y_coord + 2.3 * section_heigth, 2.2 * section_width,
+                      .2 * section_heigth])
+    pygame.draw.rect(screen, 'light blue',
+                     [x_coord + 0.1 * section_width, y_coord + .2 * section_heigth, .2 * section_width,
+                      2 * section_heigth])
+    pygame.draw.rect(screen, 'light blue',
+                     [x_coord, y_coord + 0.5 * section_heigth, 2 * section_width, .2 * section_heigth])
+
+    pygame.draw.rect(screen, 'light blue',
+                     [x_coord, y_coord + 1.7 * section_heigth, 2 * section_width, .2 * section_heigth])
+    screen.blit(font2.render('OIL', True, 'light blue'), (x_coord + .4 * section_width, y_coord + 0.7 * section_heigth))
+    for i in range(4):
+        pygame.draw.circle(screen, 'red',
+                           (x_coord + 0.5 * section_width + i * 0.4 * section_width, y_coord + 2.1 * section_heigth), 3)
+
+
+    if counter < 15 or 30 < counter < 45:
+        screen.blit(flames_img,(x_coord, y_coord - section_heigth))
+    else:
+        screen.blit(pygame.transform.flip(flames_img, True, False), (x_coord, y_coord - section_heigth))
+    return oil
+def draw_barrels():
+    pass
+
+def draw_kong():
+    pass
 
 barrels = pygame.sprite.Group()
 
@@ -236,7 +278,12 @@ run = True
 while run:
     screen.fill('black')
     timer.tick(fps)
+    if counter < 60:
+        counter += 1
+    else:
+        counter = 0
     plats, lads = draw_screen()
+    draw_extras()
     if barrel_count < barrel_spawn_time:
         barrel_count += 1
     else:
