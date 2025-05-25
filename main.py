@@ -31,6 +31,16 @@ barrel_img = pygame.transform.scale(pygame.image.load('assets/images/barrels/bar
 
 flames_img = pygame.transform.scale(pygame.image.load('assets/images/fire.png'), (section_width * 2, section_heigth))
 
+barrel_side= pygame.transform.scale(pygame.image.load('assets/images/barrels/barrel2.png'), (section_width * 2, section_heigth * 2.5))
+
+
+dk1= pygame.transform.scale(pygame.image.load('assets/images/dk/dk1.png'), (section_width * 5, section_heigth * 5))
+dk2= pygame.transform.scale(pygame.image.load('assets/images/dk/dk2.png'), (section_width * 5, section_heigth * 5))
+dk3= pygame.transform.scale(pygame.image.load('assets/images/dk/dk3.png'), (section_width * 5, section_heigth * 5))
+
+peach1 = pygame.transform.scale(pygame.image.load('assets/images/peach/peach1.png'), (2*section_width, 3*section_heigth))
+peach2 = pygame.transform.scale(pygame.image.load('assets/images/peach/peach2.png'), (2*section_width, 3*section_heigth))
+
 start_y = window_heigth - 2 * section_heigth
 row2_y = start_y - 4 * section_heigth
 row3_y = row2_y - 7 * slope - 3 * section_heigth
@@ -229,6 +239,10 @@ def draw_screen():
     return platforms, climbers
 
 def draw_extras():
+    if barrel_count < barrel_spawn_time/2:
+        screen.blit(peach1,(10*section_width, row6_y- 6*section_heigth))
+    else:
+        screen.blit(peach2, (10 * section_width, row6_y - 6 * section_heigth))
     oil = draw_oil()
 
     draw_barrels()
@@ -263,10 +277,25 @@ def draw_oil():
         screen.blit(pygame.transform.flip(flames_img, True, False), (x_coord, y_coord - section_heigth))
     return oil
 def draw_barrels():
-    pass
+    screen.blit(pygame.transform.rotate(barrel_side, 90), (section_width*1.2, 5.4*section_heigth))
+    screen.blit(pygame.transform.rotate(barrel_side, 90), (section_width * 2.5, 5.4 * section_heigth))
+    screen.blit(pygame.transform.rotate(barrel_side, 90), (section_width * 2.5, 7.7 * section_heigth))
+    screen.blit(pygame.transform.rotate(barrel_side, 90), (section_width * 1.2, 7.7 * section_heigth))
 
 def draw_kong():
-    pass
+    phase_time = barrel_time // 4
+    if barrel_spawn_time - barrel_count > 3 * phase_time:
+        dk_img = dk2
+    elif barrel_spawn_time - barrel_count > 2 * phase_time:
+        dk_img = dk1
+    elif barrel_spawn_time - barrel_count > phase_time:
+        dk_img = dk3
+    else:
+        dk_img = pygame.transform.flip(dk1, True, False)
+        screen.blit(barrel_img, (250,250))
+    screen.blit(dk_img,(3.5*section_width, row6_y - 5.5 * section_heigth))
+
+
 
 barrels = pygame.sprite.Group()
 
