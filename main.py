@@ -20,6 +20,13 @@ section_width = window_width // 32
 section_heigth = window_heigth // 32
 slope = section_heigth // 8
 
+
+barrel_spawn_time = 360
+barrel_count = barrel_spawn_time / 2
+barrel_time = 360
+barrel_img = pygame.transform.scale(pygame.image.load('assets/images/barrels/barrel.png'), (section_width * 1.5, section_heigth * 2))
+
+
 start_y = window_heigth - 2 * section_heigth
 row2_y = start_y - 4 * section_heigth
 row3_y = row2_y - 7 * slope - 3 * section_heigth
@@ -32,6 +39,7 @@ row4_top = row4_y - 8 * slope
 row3_top = row3_y - 8 * slope
 row2_top = row2_y - 8 * slope
 row1_top = start_y - 5 * slope
+fireball_trigger = False
 active_level = 0
 
 levels = [{'bridges':[(1, start_y, 15), (16, start_y - slope, 3),
@@ -72,6 +80,76 @@ levels = [{'bridges':[(1, start_y, 15), (16, start_y - slope, 3),
 
 
 
+class Barrel(pygame.sprite.Sprite):
+    def __init__(self, x_pos, y_pos):
+        pygame.sprite.Sprite.__init__(self)
+        self.image = pygame.Surface((50, 50))
+        self.rect = self.image.get_rect()
+        self.rect.center = (x_pos, y_pos)
+        self.y_change = 0
+        self.x_change = 1
+        self.pos = 0
+        self.count = 0
+        self.oil_collision = False
+        self.falling = False
+        self.check_lad = False
+        self.bottom = self.rect
+
+    def update(self, fire_trig):
+        if self.y_change < 8 and not self.falling:
+            barrel.y_change += 2
+        for i in range(len(plats)):
+            if self.bottom.colliderect(plats[i]):
+                self.y_change = 0
+                self.falling = False
+        if self.rect.colliderect(oil_drum):
+            if not self.oil_collision:
+                self.oil_collision = True
+                if random.randint(0, 4) == 4:
+                    fire_trig = True
+        if not self.falling:
+            if row5_top >= self.rect.bottom or row3_top >= self.rect.bottom >= row4_top or row1_top > self.rect.bottom >= row2_top:
+                self.x_change = 3
+            else:
+                self.x_change = -3
+        else:
+            self.x_change = 0
+        self.rect.move_ip(self.x_change, self.y_change)
+        if self.rect.top > screen_heigth:
+            self.kill()
+        if self.count < 15:
+            self.count += 1
+        else:
+            self.count = 0
+            if self.x_change > 0:
+                if self.pos < 3:
+                    self.pos += 1
+                else:
+                    self.pos = 0
+            else:
+                if self.pos > 0:
+                    self.pos -= 1
+                else:
+                    self.pos = 3
+        self.bottom = pygame.rect.Rect((self.rect[0], self.rect.bottom), (self.rect[2], 3))
+        return fire_trig
+
+    def check_fall(self):
+        already_collided = False
+        below = pygame.rect.Rect((self.rect[0], self.rect[1] + section_heigth), (self.rect[2], section_heigth))
+        for lad in lads:
+            if below.colliderect(lad) and not self.falling and not self.check_lad:
+                self.check_lad = True
+                already_collided = True
+                if random.randint(0, 60) == 60:
+                    self.falling = True
+                    self.y_change = 4
+        if not already_collided:
+            self.check_lad = False
+
+    def draw(self):
+        screen.blit(pygame.transform.rotate(barrel_img, 90 * self.pos), self.rect.topleft)
+
 
 
 class Bridge:
@@ -103,8 +181,6 @@ class Bridge:
         top_line = pygame.rect.Rect((self.x_pos, self.y_pos), (self.length * section_width, 2))
         # pygame.draw.rect(screen, 'blue', top_line)
         return top_line
-
-
 
 class Ladder:
     def __init__(self, x_pos, y_pos, length):
@@ -150,6 +226,9 @@ def draw_screen():
     return platforms, climbers
 
 
+barrels = pygame.sprite.Group()
+
+oil_drum = pygame.rect.Rect((1,1), (1,1))
 
 
 
@@ -157,8 +236,20 @@ run = True
 while run:
     screen.fill('black')
     timer.tick(fps)
-
     plats, lads = draw_screen()
+    if barrel_count < barrel_spawn_time:
+        barrel_count += 1
+    else:
+        barrel_count = random.randint(0, 120)
+        barrel_time =  barrel_spawn_time - barrel_count
+        barrel = Barrel(270, 270)
+        barrels.add(barrel)
+    for barrel in barrels:
+        barrel.draw()
+        barrel.check_fall()
+        fireball_trigger = barrel.update(fireball_trigger)
+
+
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
