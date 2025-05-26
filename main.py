@@ -41,6 +41,9 @@ dk3= pygame.transform.scale(pygame.image.load('assets/images/dk/dk3.png'), (sect
 peach1 = pygame.transform.scale(pygame.image.load('assets/images/peach/peach1.png'), (2*section_width, 3*section_heigth))
 peach2 = pygame.transform.scale(pygame.image.load('assets/images/peach/peach2.png'), (2*section_width, 3*section_heigth))
 
+fireball = pygame.transform.scale(pygame.image.load('assets/images/fireball.png'), (1.5*section_width, 2*section_heigth))
+fireball2 = pygame.transform.scale(pygame.image.load('assets/images/fireball2.png'), (1.5*section_width, 2*section_heigth))
+
 start_y = window_heigth - 2 * section_heigth
 row2_y = start_y - 4 * section_heigth
 row3_y = row2_y - 7 * slope - 3 * section_heigth
@@ -53,7 +56,7 @@ row4_top = row4_y - 8 * slope
 row3_top = row3_y - 8 * slope
 row2_top = row2_y - 8 * slope
 row1_top = start_y - 5 * slope
-fireball_trigger = False
+fireball_trigger = True
 active_level = 0
 counter = 0
 
@@ -165,6 +168,88 @@ class Barrel(pygame.sprite.Sprite):
     def draw(self):
         screen.blit(pygame.transform.rotate(barrel_img, 90 * self.pos), self.rect.topleft)
 
+class Flame(pygame.sprite.Sprite):
+    def __init__(self, x_pos, y_pos):
+        pygame.sprite.Sprite.__init__(self)
+        self.image = fireball
+        self.rect = self.image.get_rect()
+        self.rect.center = (x_pos, y_pos)
+        self.pos = 1
+        self.count = 0
+        self.x_count = 0
+        self.x_change = 2
+        self.x_max = 4
+        self.y_change = 0
+        self.row = 1
+        self.check_lad = False
+        self.climbing = False
+
+    def update(self):
+        if self.y_change < 3 and not self.climbing:
+            flame.y_change += 0.25
+        for i in range(len(plats)):
+            if self.rect.colliderect(plats[i]):
+                flame.climbing = False
+                flame.y_change = -4
+        # if flame collides with players hitbox - trigger reset of the game (also do this to barrels)
+        if self.count < 15:
+            self.count += 1
+        else:
+            self.count = 0
+            self.pos *= -1
+            if self.x_count < self.x_max:
+                self.x_count += 1
+            else:  # row 1,3 and 5 - go further right than left overall, otherwise flip it
+                self.x_count = 0
+                if self.x_change > 0:
+                    if self.row in [1, 3, 5]:
+                        self.x_max = random.randint(3, 6)
+                    else:
+                        self.x_max = random.randint(6, 10)
+                else:
+                    if self.row in [1, 3, 5]:
+                        self.x_max = random.randint(6, 10)
+                    else:
+                        self.x_max = random.randint(3, 6)
+                self.x_change *= -1
+        if self.pos == 1:
+            if self.x_change > 0:
+                self.image = fireball
+            else:
+                self.image = pygame.transform.flip(fireball, True, False)
+        else:
+            if self.x_change > 0:
+                self.image = fireball2
+            else:
+                self.image = pygame.transform.flip(fireball2, True, False)
+        self.rect.move_ip(self.x_change, self.y_change)
+        if self.rect.top > screen_heigth or self.rect.top < 0:
+            self.kill()
+
+    def check_climb(self):
+        already_collided = False
+        for lad in lads:
+            if self.rect.colliderect(lad) and not self.climbing and not self.check_lad:
+                self.check_lad = True
+                already_collided = True
+                if random.randint(0, 120) == 120:
+                    self.climbing = True
+                    self.y_change = - 4
+        if not already_collided:
+            self.check_lad = False
+        if self.rect.bottom < row6_y:
+            self.row = 6
+        elif self.rect.bottom < row5_y:
+            self.row = 5
+        elif self.rect.bottom < row4_y:
+            self.row = 4
+        elif self.rect.bottom < row3_y:
+            self.row = 3
+        elif self.rect.bottom < row2_y:
+            self.row = 2
+        else:
+            self.row = 1
+
 class Bridge:
     def __init__(self, x_pos, y_pos, length):
         self.x_pos = x_pos * section_width
@@ -249,7 +334,6 @@ def draw_extras():
 
     draw_kong()
     return oil
-
 def draw_oil():
     x_coord, y_coord = 4 * section_width, window_heigth - 4.5 * section_heigth
     oil = pygame.draw.rect(screen, 'blue', [x_coord, y_coord, 2 * section_width, 2.5 * section_heigth])
@@ -281,7 +365,6 @@ def draw_barrels():
     screen.blit(pygame.transform.rotate(barrel_side, 90), (section_width * 2.5, 5.4 * section_heigth))
     screen.blit(pygame.transform.rotate(barrel_side, 90), (section_width * 2.5, 7.7 * section_heigth))
     screen.blit(pygame.transform.rotate(barrel_side, 90), (section_width * 1.2, 7.7 * section_heigth))
-
 def draw_kong():
     phase_time = barrel_time // 4
     if barrel_spawn_time - barrel_count > 3 * phase_time:
@@ -297,10 +380,13 @@ def draw_kong():
 
 
 
+
+
+
 barrels = pygame.sprite.Group()
+flames = pygame.sprite.Group()
 
 oil_drum = pygame.rect.Rect((1,1), (1,1))
-
 
 
 run = True
@@ -325,6 +411,15 @@ while run:
         barrel.check_fall()
         fireball_trigger = barrel.update(fireball_trigger)
 
+    if fireball_trigger:
+        flame = Flame(5 * section_width, window_heigth - 4*section_heigth)
+        flames.add(flame)
+        fireball_trigger = False
+
+    for flame  in flames:
+        flame.check_climb()
+    flames.draw(screen)
+    flames.update()
 
 
     for event in pygame.event.get():
