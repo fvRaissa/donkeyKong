@@ -44,6 +44,16 @@ peach2 = pygame.transform.scale(pygame.image.load('assets/images/peach/peach2.pn
 fireball = pygame.transform.scale(pygame.image.load('assets/images/fireball.png'), (1.5*section_width, 2*section_heigth))
 fireball2 = pygame.transform.scale(pygame.image.load('assets/images/fireball2.png'), (1.5*section_width, 2*section_heigth))
 
+
+standing = pygame.transform.scale(pygame.image.load('assets/images/mario/standing.png'), (2 *section_width, 2.5*section_heigth))
+jumping = pygame.transform.scale(pygame.image.load('assets/images/mario/jumping.png'), (2 *section_width, 2.5*section_heigth))
+running = pygame.transform.scale(pygame.image.load('assets/images/mario/running.png'), (2 *section_width, 2.5*section_heigth))
+climbing1 = pygame.transform.scale(pygame.image.load('assets/images/mario/climbing1.png'), (2 *section_width, 2.5*section_heigth))
+climbing2 = pygame.transform.scale(pygame.image.load('assets/images/mario/climbing2.png'), (2 *section_width, 2.5*section_heigth))
+hammer_stand = pygame.transform.scale(pygame.image.load('assets/images/mario/hammer_stand.png'), (2.5 *section_width, 2.5*section_heigth))
+hammer_jump = pygame.transform.scale(pygame.image.load('assets/images/mario/hammer_jump.png'), (2.5 *section_width, 2.5*section_heigth))
+hammer_overhead = pygame.transform.scale(pygame.image.load('assets/images/mario/hammer_overhead.png'), (2.5 *section_width, 3.5*section_heigth))
+
 start_y = window_heigth - 2 * section_heigth
 row2_y = start_y - 4 * section_heigth
 row3_y = row2_y - 7 * slope - 3 * section_heigth
@@ -95,6 +105,67 @@ levels = [{'bridges':[(1, start_y, 15), (16, start_y - slope, 3),
                        (13, row6_y + 5 * slope, 2), (13, row6_y + 25 * slope, 2),
                        (18, row6_y - 27 * slope, 4), (12, row6_y - 17 * slope, 2),
                        (10, row6_y - 17 * slope, 2), (12, -5, 13), (10, -5, 13)]}]
+
+
+class Player (pygame.sprite.Sprite):
+    def __init__(self, x_pos, y_pos):
+        pygame.sprite.Sprite.__init__(self)
+        self.y_change = 0
+        self.x_speed = 3
+        self.x_change =0
+        self.landed = False
+        self.pos = 0
+        self.dir = 1
+        self.count = 0
+        self.climbing = False
+        self.image = standing
+        self.hammer = False
+        self.max_hammer = 450
+        self.hammer_len = self.max_hammer
+        self.hammer_pos = 1
+        self.rect = self.image.get_rect
+        self.hitbox = self.rect
+        self.hammer_box = self.rect
+        self.rect.center = (x_pos, y_pos)
+        self.bottom = pygame.rect.Rect(self.rect.left, self.rect.bottom - 20, self.rect.width , 20)
+
+
+    def update(self):
+        for i in range(len(plats)):
+            if player.botoom.colliderect(plats[i]):
+                player_landed = True
+                if not self.climbing:
+                    player.rect.centery = plats[i].top -
+
+
+        if not self.landed and not self.climbing:
+            self.y_change += 0.25
+        self.rect.move_ip(self.x_change * self.x_change, self.y_change)
+        self.bottom = pygame.rect.Rect(self.rect.left, self.rect.bottom - 20, self.rect.width , 20)
+        if self.x_change != 0 or (self.climbing and self.y_change != 0):
+            if self.count < 3:
+                self.count += 1
+            else:
+                self.count = 0
+                if self.pos == 0:
+                    self.pos +=1
+                else:
+                    self.pos = 0
+        else:
+            self.pos = 0
+        if self.hammer:
+            self.hammer_pos = (self.hammer_len // 30) % 2
+            self.hammer_len -= 1
+            if self.hammer_len ==0:
+                self.hammer = False
+                self.hammer_len = self.max_hammer
+
+
+
+    def draw(self):
+        pass
+    def calc_hitbox(self):
+        pass
 
 
 
@@ -385,6 +456,7 @@ def draw_kong():
 
 barrels = pygame.sprite.Group()
 flames = pygame.sprite.Group()
+player = Player(250, window_heigth - 130)
 
 oil_drum = pygame.rect.Rect((1,1), (1,1))
 
