@@ -44,6 +44,7 @@ peach2 = pygame.transform.scale(pygame.image.load('assets/images/peach/peach2.pn
 fireball = pygame.transform.scale(pygame.image.load('assets/images/fireball.png'), (1.5*section_width, 2*section_heigth))
 fireball2 = pygame.transform.scale(pygame.image.load('assets/images/fireball2.png'), (1.5*section_width, 2*section_heigth))
 
+hammer = pygame.transform.scale(pygame.image.load('assets/images/hammer.png'), (2*section_width, 2*section_heigth))
 
 standing = pygame.transform.scale(pygame.image.load('assets/images/mario/standing.png'), (2 *section_width, 2.5*section_heigth))
 jumping = pygame.transform.scale(pygame.image.load('assets/images/mario/jumping.png'), (2 *section_width, 2.5*section_heigth))
@@ -66,11 +67,18 @@ row4_top = row4_y - 8 * slope
 row3_top = row3_y - 8 * slope
 row2_top = row2_y - 8 * slope
 row1_top = start_y - 5 * slope
-fireball_trigger = True
+fireball_trigger = False
 active_level = 0
 counter = 0
+score = 0
+high_score = 0
+lives = 5
+bonus = 6000
+first_fireball_trigger = False
+victory = False
+reset_game = False
 
-levels = [{'bridges':[(1, start_y, 15), (16, start_y - slope, 3),
+levels = [{'bridges': [(1, start_y, 15), (16, start_y - slope, 3),
                        (19, start_y - 2 * slope, 3), (22, start_y - 3 * slope, 3),
                        (25, start_y - 4 * slope, 3), (28, start_y - 5 * slope, 3),
                        (25, row2_y, 3), (22, row2_y - slope, 3),
@@ -95,7 +103,7 @@ levels = [{'bridges':[(1, start_y, 15), (16, start_y - slope, 3),
                        (19, row6_y - 2 * slope, 3), (16, row6_y - 3 * slope, 3),
                        (2, row6_y - 4 * slope, 14), (13, row6_y - 4 * section_heigth, 6),
                        (10, row6_y - 3 * section_heigth, 3)],
-           'ladders':[(12, row2_y + 6 * slope, 2), (12, row2_y + 26 * slope, 2),
+           'ladders': [(12, row2_y + 6 * slope, 2), (12, row2_y + 26 * slope, 2),
                        (25, row2_y + 11 * slope, 4), (6, row3_y + 11 * slope, 3),
                        (14, row3_y + 8 * slope, 4), (10, row4_y + 6 * slope, 1),
                        (10, row4_y + 24 * slope, 2), (16, row4_y + 6 * slope, 5),
@@ -104,7 +112,10 @@ levels = [{'bridges':[(1, start_y, 15), (16, start_y - slope, 3),
                        (23, row5_y + 24 * slope, 2), (25, row6_y + 9 * slope, 4),
                        (13, row6_y + 5 * slope, 2), (13, row6_y + 25 * slope, 2),
                        (18, row6_y - 27 * slope, 4), (12, row6_y - 17 * slope, 2),
-                       (10, row6_y - 17 * slope, 2), (12, -5, 13), (10, -5, 13)]}]
+                       (10, row6_y - 17 * slope, 2), (12, -5, 13), (10, -5, 13)],
+          'hammers': [(4, row6_top + section_heigth), (4, row4_top+section_heigth)],
+           'target': (13, row6_y - 4 * section_heigth, 3)}]
+
 
 
 class Player (pygame.sprite.Sprite):
@@ -123,24 +134,24 @@ class Player (pygame.sprite.Sprite):
         self.max_hammer = 450
         self.hammer_len = self.max_hammer
         self.hammer_pos = 1
-        self.rect = self.image.get_rect
+        self.rect = self.image.get_rect()
         self.hitbox = self.rect
         self.hammer_box = self.rect
         self.rect.center = (x_pos, y_pos)
+        self.over_barrel = False
         self.bottom = pygame.rect.Rect(self.rect.left, self.rect.bottom - 20, self.rect.width , 20)
 
 
     def update(self):
+        self.landed = False
         for i in range(len(plats)):
-            if player.botoom.colliderect(plats[i]):
-                player_landed = True
+            if self.bottom.colliderect(plats[i]):
+                self.landed = True
                 if not self.climbing:
-                    player.rect.centery = plats[i].top -
-
-
+                    self.rect.centery = plats[i].top - self.rect.height/2 + 1
         if not self.landed and not self.climbing:
             self.y_change += 0.25
-        self.rect.move_ip(self.x_change * self.x_change, self.y_change)
+        self.rect.move_ip(self.x_change * self.x_speed, self.y_change)
         self.bottom = pygame.rect.Rect(self.rect.left, self.rect.bottom - 20, self.rect.width , 20)
         if self.x_change != 0 or (self.climbing and self.y_change != 0):
             if self.count < 3:
@@ -163,10 +174,72 @@ class Player (pygame.sprite.Sprite):
 
 
     def draw(self):
-        pass
-    def calc_hitbox(self):
-        pass
+        if not self.hammer:
+            if not self.climbing and self.landed:
+                if self.pos == 0:
+                    self.image = standing
+                else:
+                    self.image = running
+            if not self.landed and not self.climbing:
+                self.image = jumping
+            if self.climbing:
+                if self.pos == 0:
+                    self.image = climbing1
+                else:
+                    self.image = climbing2
+        else:
+            if self.hammer_pos == 0:
+                self.image = hammer_jump
+            else:
+                self.image = hammer_overhead
+        if self.dir == -1:
+            self.image = pygame.transform.flip(self.image, True, False)
+        else:
+            self.image = self.image
+        self.calc_hitbox()
+        if self.hammer_pos == 1 and self.hammer:
+            screen.blit(self.image, (self.rect.left, self.rect.top - section_heigth))
+        else:
+            screen.blit(self.image, self.rect.topleft)
 
+    def calc_hitbox(self):
+        if not self.hammer:
+            self.hitbox = pygame.rect.Rect((self.rect[0] + 15, self.rect[1] + 5),
+                                           (self.rect[2] - 30, self.rect[3] - 10))
+        elif self.hammer_pos == 0:
+            if self.dir == 1:
+                self.hitbox = pygame.rect.Rect((self.rect[0], self.rect[1] + 5),
+                                               (self.rect[2] - 30, self.rect[3] - 10))
+                self.hammer_box = pygame.rect.Rect((self.hitbox[0] + self.hitbox[2], self.rect[1] + 5),
+                                                   (self.hitbox[2], self.rect[3] - 10))
+            else:
+                self.hitbox = pygame.rect.Rect((self.rect[0] + 40, self.rect[1] + 5),
+                                               (self.rect[2] - 30, self.rect[3] - 10))
+                self.hammer_box = pygame.rect.Rect((self.hitbox[0] - self.hitbox[2], self.rect[1] + 5),
+                                                   (self.hitbox[2], self.rect[3] - 10))
+        else:
+            self.hitbox = pygame.rect.Rect((self.rect[0] + 15, self.rect[1] + 5),
+                                           (self.rect[2] - 30, self.rect[3] - 10))
+            self.hammer_box = pygame.rect.Rect((self.hitbox[0], self.hitbox[1] - section_heigth),
+                                               (self.hitbox[2], section_heigth))
+
+class Hammer(pygame.sprite.Sprite):
+    def __init__(self, x_pos, y_pos):
+        pygame.sprite.Sprite.__init__(self)
+        self.image = hammer
+        self.rect = self.image.get_rect()
+        self.rect.top = y_pos
+        self.rect.left = x_pos * section_width
+        self.used = False
+
+    def draw(self):
+        if not self.used:
+            screen.blit(self.image, (self.rect[0], self.rect[1]))
+            if self.rect.colliderect(player.hitbox):
+                self.kill()
+                player.hammer = True
+                player.hammer_len = player.max_hammer
+                self.used = True
 
 
 class Barrel(pygame.sprite.Sprite):
@@ -373,6 +446,7 @@ class Ladder:
             pygame.draw.line(screen, lad_color, (left_coord, mid_coord), (right_coord, mid_coord), line_width)
         body = pygame.rect.Rect((self.x_pos, self.y_pos - section_heigth),
                                 (section_width, (lad_height * self.length * section_heigth + section_heigth)))
+
         return body
 
 def draw_screen():
@@ -395,6 +469,13 @@ def draw_screen():
     return platforms, climbers
 
 def draw_extras():
+    screen.blit(font.render(f'I•{score}', True, 'white'), (3 * section_width, 2 * section_heigth))
+    screen.blit(font.render(f'TOP•{high_score}', True, 'white'), (14 * section_width, 2 * section_heigth))
+    screen.blit(font.render(f'[  ][        ][  ]', True, 'white'), (20 * section_width, 4 * section_heigth))
+    screen.blit(font2.render(f'  M    BONUS     L ', True, 'white'), (20 * section_width + 5, 4 * section_heigth))
+    screen.blit(font2.render(f'  {lives}       {bonus}        {active_level + 1}  ', True, 'white'),
+                (20 * section_width + 5, 5 * section_heigth))
+
     if barrel_count < barrel_spawn_time/2:
         screen.blit(peach1,(10*section_width, row6_y- 6*section_heigth))
     else:
@@ -405,6 +486,7 @@ def draw_extras():
 
     draw_kong()
     return oil
+
 def draw_oil():
     x_coord, y_coord = 4 * section_width, window_heigth - 4.5 * section_heigth
     oil = pygame.draw.rect(screen, 'blue', [x_coord, y_coord, 2 * section_width, 2.5 * section_heigth])
@@ -431,6 +513,7 @@ def draw_oil():
     else:
         screen.blit(pygame.transform.flip(flames_img, True, False), (x_coord, y_coord - section_heigth))
     return oil
+
 def draw_barrels():
     screen.blit(pygame.transform.rotate(barrel_side, 90), (section_width*1.2, 5.4*section_heigth))
     screen.blit(pygame.transform.rotate(barrel_side, 90), (section_width * 2.5, 5.4 * section_heigth))
@@ -449,16 +532,69 @@ def draw_kong():
         screen.blit(barrel_img, (250,250))
     screen.blit(dk_img,(3.5*section_width, row6_y - 5.5 * section_heigth))
 
+def check_climb():
+    can_climb = False
+    climb_down = False
 
+    under = pygame.rect.Rect((player.rect[0], player.rect[1] + 2 * section_heigth), (player.rect[2], player.rect[3]))
+    for lad in lads:
+        if player.rect.colliderect(lad) and not can_climb:
+            can_climb = True
+        if under.colliderect(lad):
+            climb_down = True
+    if (not can_climb and (not climb_down or player.y_change < 0)) or \
+            (player.landed and can_climb and player.y_change > 0 and not climb_down):
+        player.climbing = False
 
+    return can_climb, climb_down
 
+def barrel_collide(reset):
+    global score
+    under = pygame.rect.Rect((player.rect[0], player.rect[1] + 2 * section_heigth), (player.rect[2], player.rect[3]))
+    for brl in barrels:
+        if brl.rect.colliderect(player.hitbox):
+            reset = True
+        elif not player.landed and not player.over_barrel and under.colliderect(brl):
+            player.over_barrel = True
+            score += 100
+    if player.landed:
+        player.over_barrel = False
 
+    return reset
+
+def reset():
+    global player, barrels, flames, hammers, first_fireball_trigger, victory, lives, bonus
+    global barrel_spawn_time, barrel_count
+    pygame.time.delay(1000)
+    for bar in barrels:
+        bar.kill()
+    for flam in flames:
+        flam.kill()
+    for hams in hammers:
+        hams.kill()
+    for hams in hammers_list:
+        hammers.add(Hammer(*hams))
+    lives -= 1
+    bonus = 6000
+    player.kill()
+    player = Player(250, window_heigth - 130)
+    first_fireball_trigger = False
+    barrel_spawn_time = 360
+    barrel_count = barrel_spawn_time / 2
+    victory = False
+
+def check_victory():
+    target = levels[active_level]['target']
+    target_rect = pygame.rect.Rect((target[0] * section_width, target[1]), (section_width * target[2], 1))
+    return player.bottom.colliderect(target_rect)
 
 barrels = pygame.sprite.Group()
 flames = pygame.sprite.Group()
+hammers = pygame.sprite.Group()
+hammers_list = levels[active_level]['hammers']
+for ham in hammers_list:
+    hammers.add(Hammer(*ham))
 player = Player(250, window_heigth - 130)
-
-oil_drum = pygame.rect.Rect((1,1), (1,1))
 
 
 run = True
@@ -469,8 +605,13 @@ while run:
         counter += 1
     else:
         counter = 0
+        if bonus > 0:
+            bonus -= 100
+
     plats, lads = draw_screen()
-    draw_extras()
+    oil_drum = draw_extras()
+    climb, down = check_climb()
+    victory = check_victory()
     if barrel_count < barrel_spawn_time:
         barrel_count += 1
     else:
@@ -478,10 +619,17 @@ while run:
         barrel_time =  barrel_spawn_time - barrel_count
         barrel = Barrel(270, 270)
         barrels.add(barrel)
+        if not first_fireball_trigger:
+            flame = Flame(5 * section_width, window_heigth - 4 * section_heigth)
+            flames.add(flame)
+            first_fireball_trigger = True
     for barrel in barrels:
         barrel.draw()
         barrel.check_fall()
         fireball_trigger = barrel.update(fireball_trigger)
+        if barrel.rect.colliderect(player.hammer_box) and player.hammer:
+            barrel.kill()
+            score += 500
 
     if fireball_trigger:
         flame = Flame(5 * section_width, window_heigth - 4*section_heigth)
@@ -490,13 +638,75 @@ while run:
 
     for flame  in flames:
         flame.check_climb()
+        if flame.rect.colliderect(player.hitbox):
+            reset_game = True
     flames.draw(screen)
     flames.update()
+    player.update()
+    player.draw()
+    for ham in hammers:
+        ham.draw()
+
+
+
+    reset_game = barrel_collide(reset_game)
+    if reset_game:
+        if lives > 0:
+            reset()
+            reset_game = False
+        else:
+            run = False
+
 
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             run = False
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_RIGHT and not player.climbing:
+                player.x_change = 1
+                player.dir = 1
+            if event.key == pygame.K_LEFT and not player.climbing:
+                player.x_change = -1
+                player.dir = -1
+            if event.key == pygame.K_SPACE and player.landed:
+                player.landed = False
+                player.y_change = -6
+            if event.key == pygame.K_UP:
+                if climb:
+                    player.y_change = -2
+                    player.x_change = 0
+                    player.climbing = True
+            if event.key == pygame.K_DOWN:
+                if down:
+                    player.y_change = 2
+                    player.x_change = 0
+                    player.climbing = True
+        if event.type == pygame.KEYUP:
+            if event.key == pygame.K_RIGHT:
+                player.x_change = 0
+            if event.key == pygame.K_LEFT:
+                player.x_change = 0
+            if event.key == pygame.K_UP:
+                if climb:
+                    player.y_change = 0
+                if player.climbing and player.landed:
+                    player.climbing = False
+            if event.key == pygame.K_DOWN:
+                if climb:
+                    player.y_change = 0
+                if player.climbing and player.landed:
+                    player.climbing = False
+    if victory:
+        screen.blit(font.render('VICTORY!', True, 'white'), (window_width / 2, window_heigth / 2))
+        reset_game = True
+        # active_level += 1
+        lives += 1
+        score += bonus
+        if score > high_score:
+            high_score = score
+        score = 0
+        player.climbing = False
 
     pygame.display.flip()
 pygame.quit()
